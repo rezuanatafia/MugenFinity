@@ -13,6 +13,7 @@
 ![XGBoost](https://img.shields.io/badge/XGBoost-189FDD)
 ![LightGBM](https://img.shields.io/badge/LightGBM-9ACD32)
 ![Jupyter](https://img.shields.io/badge/Jupyter-F37626?logo=jupyter&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?logo=streamlit&logoColor=white)
 
 </div>
 
@@ -28,6 +29,8 @@ Dengue outbreaks follow the weather with a delay: rain creates breeding sites, a
 | 🔢 **Predicted case count** | Expected number of cases |
 | 📏 **80% interval** | A nominal low–high range around the prediction |
 | 🎚️ **Risk tier** | Low · Medium · High · Critical |
+
+A **Streamlit app** (`app.py`) lets you pick a city, ward and week and see these forecasts, alongside the ward's recent cases and weather.
 
 ## 📊 Results (2025 held-out test)
 
@@ -107,27 +110,67 @@ flowchart LR
 MugenFinity/
 ├── README.md
 ├── architecture.md                  # detailed pipeline design
+├── app.py                           # Streamlit forecast app
+├── train.py                         # runs the notebook as a script to rebuild the models
 ├── dengue_preprocessing.ipynb       # main notebook: features → models → export
 ├── requirements.txt
 ├── data/
 │   ├── hackathon_preli_dataset_-_bangladesh_dengue_large_dataset.csv   # raw input
-│   └── features.csv                 # output of src/features.py
+│   ├── features.csv                 # output of src/features.py
+│   └── models/
+│       └── dengue_forecast_bundle.pkl   # trained models, feature order, risk thresholds
 └── src/
     ├── features.py                  # builds lag features and targets
     └── check_data.py                # sanity checks on raw and feature data
 ```
 
-Running the notebook also generates `bangladesh_dengue_preprocessed.csv` and a `models/` folder containing the `.pkl` files.
+`train.py` also writes `data/bangladesh_dengue_preprocessed.csv` and the individual model `.pkl` files to `data/models/`. These are git-ignored; only the forecast bundle is committed.
 
 ## 🚀 Getting started
+
+All commands run from the repo root.
 
 **1. Install dependencies** (Python 3.10+)
 
 ```bash
-pip install numpy pandas matplotlib seaborn scikit-learn xgboost lightgbm joblib notebook
+pip install -r requirements.txt
 ```
 
-**2. Optional: build and check features with the scripts** (run from the repo root)
+To open the notebook in Jupyter, also run `pip install notebook`.
+
+**2. Launch the app**
+
+The trained bundle is already in `data/models/`, so the app runs without training:
+
+```bash
+streamlit run app.py
+```
+
+In the sidebar, choose a city, a ward, the last week of available data (any week in 2025) and how many weeks ahead to forecast. The app shows:
+
+- outbreak probability, predicted cases, the 80% interval and the risk tier
+- a table with all three horizons (2, 3 and 4 weeks)
+- the actual recorded cases for that week, when the dataset has them
+- the ward's weather and vulnerability data for the selected week
+- charts of the previous 52 weeks of cases and rainfall
+
+**3. Optional: retrain the models**
+
+```bash
+python train.py
+```
+
+This runs every code cell of `dengue_preprocessing.ipynb` without opening Jupyter and overwrites `data/models/dengue_forecast_bundle.pkl`. Plots are not shown, and tables print as text.
+
+To work in the notebook instead, open `dengue_preprocessing.ipynb` and choose **Run All**. It looks for the raw CSV in its own folder, so copy the file there first:
+
+```bash
+cp data/hackathon_preli_dataset_-_bangladesh_dengue_large_dataset.csv .
+```
+
+A full run took about 40 seconds on our machine; on free Google Colab, expect 1–2 minutes.
+
+**4. Optional: build and check features with the scripts**
 
 ```bash
 python src/features.py
@@ -135,16 +178,6 @@ python src/check_data.py
 ```
 
 Every line printed by `check_data.py` should start with `OK`.
-
-**3. Run the notebook**
-
-The notebook looks for the raw CSV **in the same folder as the notebook**, so copy it there first:
-
-```bash
-cp data/hackathon_preli_dataset_-_bangladesh_dengue_large_dataset.csv .
-```
-
-Then open `dengue_preprocessing.ipynb` and choose **Run All**. A full run took about 40 seconds on our machine; on free Google Colab, expect 1–2 minutes.
 
 ## 👥 Team
 
@@ -159,4 +192,5 @@ Then open `dengue_preprocessing.ipynb` and choose **Run All**. A full run took a
 - Predictions describe patterns in historical data. They are **not** confirmed future case counts or medical guidance.
 - The models are trained on historical records, not a real-time surveillance feed.
 - The 80% intervals are **nominal**. Actual coverage is measured in the notebook and is not guaranteed.
-- This repository trains and saves models; it does not include an inference API. The separate MugenFinity HTML dashboard uses its own embedded scoring and does not load these `.pkl` files.
+- The Streamlit app forecasts only from weeks already in the dataset (2025). It does not take new weather data as input.
+- There is no inference API. The separate MugenFinity HTML dashboard uses its own embedded scoring and does not load these `.pkl` files.
