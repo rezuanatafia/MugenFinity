@@ -1,0 +1,5 @@
+.venv/
+__pycache__/
+data/bangladesh_dengue_preprocessed.csv
+data/models/*
+!data/models/dengue_forecast_bundle.pkl
